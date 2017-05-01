@@ -6,7 +6,7 @@
 /*   By: mbeilles <mbeilles@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2017/04/13 17:22:36 by mbeilles          #+#    #+#             */
-/*   Updated: 2017/05/01 20:04:14 by mbeilles         ###   ########.fr       */
+/*   Updated: 2017/05/01 20:57:00 by mbeilles         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,9 +20,9 @@
 
 typedef struct	s_fd_buffer
 {
-	char				*buffer;
+	char				*buff;
 	int					fd;
-	int					buff_size;
+	int					j;
 	struct s_fd_buffer	*next;
 }				t_fd_buffer;
 
