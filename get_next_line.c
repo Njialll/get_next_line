@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   get_next_line.c                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mbeilles <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: mbeilles <mbeilles@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2017/04/24 19:15:34 by mbeilles          #+#    #+#             */
-/*   Updated: 2017/04/30 15:26:53 by mbeilles         ###   ########.fr       */
+/*   Updated: 2017/05/01 20:17:00 by mbeilles         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,56 +15,65 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include "get_next_line.h"
-#include "libft/libft.h"
+#include "libft/includes/libft.h"
 
-static size_t	ft_getic(char const *buff, size_t len, char c)
+static size_t	ft_getic(char const *buff, char c, int *f)
 {
 	char const	*tmp;
 
 	tmp = buff;
-	while (*buff && *buff != c && (buff - tmp) < (long)len)
+	while (*buff)
+	{
+		if (*buff == c)
+		{
+			*f = 1;
+			return (buff - tmp);
+		}
 		buff++;
+	}
+	*f = 0;
 	return (buff - tmp);
 }
 
-static int		allocate_buffers(int fd, t_fd_buffer *buffs, char **line)
+static t_fd_buffer		*allocate_buffers(int fd, t_fd_buffer **buffs, char **line)
 {
 	t_fd_buffer	*tmp;
 
-	if ((*line = (char*)malloc(1)) == NULL)
-		return (-1);
-	if (!buffs)
+	*line = NULL;
+	if (!(*buffs))
 	{
-		if ((buffs = (t_fd_buffer*)malloc(sizeof(t_fd_buffer))) == NULL)
-			return (-1);
-		if ((buffs->buffer = (char*)malloc(BUFF_SIZE)) == NULL)
-			return (-1);
-		buffs->fd = fd;
-		buffs->next = NULL;
+		if ((*buffs = (t_fd_buffer*)malloc(sizeof(t_fd_buffer))) == NULL ||
+			((*buffs)->buffer = (char*)ft_memalloc(BUFF_SIZE + 1)) == NULL)
+			return (NULL);
+		(*buffs)->fd = fd;
+		(*buffs)->next = NULL;
 	}
-	while (buffs->next && buffs->fd != fd)
-		buffs = buffs->next;
-	if ((tmp = (t_fd_buffer*)malloc(sizeof(t_fd_buffer))) == NULL)
-		return (-1);
-	if ((tmp->buffer = (char*)malloc(BUFF_SIZE)) == NULL)
-		return (-1);
-	tmp->fd = fd;
-	tmp->next = NULL;
-	buffs->next = tmp;
-	return (1);
+	while ((*buffs)->next && (*buffs)->fd != fd)
+		(*buffs) = (*buffs)->next;
+	if ((*buffs) && (*buffs)->fd != fd)
+	{
+		if ((tmp = (t_fd_buffer*)malloc(sizeof(t_fd_buffer))) == NULL ||
+			(tmp->buffer = (char*)ft_memalloc(BUFF_SIZE + 1)) == NULL)
+			return (NULL);
+		tmp->fd = fd;
+		tmp->next = NULL;
+		(*buffs)->next = tmp;
+		return (tmp);
+	}
+	return (*buffs);
 }
 
-static char		*ft_realloc(char *buff, size_t n)
+static char		*ft_realloc(char *buff, size_t size, size_t n)
 {
 	char		*tmp;
-	size_t		len;
 
-	len = ft_strlen(buff);
-	if ((tmp = (char*)malloc(len + n)) == NULL)
+	if ((tmp = (char*)ft_memalloc(size + n + 1)) == NULL)
 		return (NULL);
-	ft_bzero(tmp, len);
-	ft_strcpy(tmp, buff);
-	free(buff);
+	if (buff)
+	{
+		ft_strncpy(tmp, buff, size);
+		free(buff);
+	}
 	return (tmp);
 }
 
@@ -73,32 +82,27 @@ int				get_next_line(int fd, char **line)
 	static t_fd_buffer		*buffs;
 	t_fd_buffer				*loc;
 	int						i;
+	int						j;
+	int						f;
+	size_t					size;
 
-	if (fd < 0 || BUFF_SIZE < 1 || !line)
+	if (fd < 0 || BUFF_SIZE < 1 || !line ||
+		(loc = allocate_buffers(fd, &buffs, line)) == NULL)
 		return (-1);
-	if ((allocate_buffers(fd, buffs, line)) < 0)
-		return (-1);
-	loc = buffs;
-	while (loc->next)
-		loc = loc->next;
-	while ((i = read(fd, loc->buffer, BUFF_SIZE)) < 0)
+	size = 0;
+	i = 0;
+	while (1)
 	{
-		if ((*line = (char*)ft_realloc(*line, i)) == NULL)
+		if (!loc->buffer[0] && ((j = read(fd, loc->buffer, BUFF_SIZE)) <= 0))
+			return ((!loc->buffer[0] && *line) ? 1 : j);
+		i = ft_getic(loc->buffer, '\n', &f);
+		if ((*line = (char*)ft_realloc(*line, size, i)) == NULL)
 			return (-1);
-		i = ft_getic(loc->buffer, i, '\n');
-		if ((ft_strncpy(*line + i, loc->buffer, i)) == NULL)
-			return (-1);
-		if (i < BUFF_SIZE)
-			return (0);
+		ft_strncpy(*line + size, loc->buffer, i);
+		ft_strncpy(loc->buffer, loc->buffer + i + f, BUFF_SIZE - i - f);
+		ft_bzero(loc->buffer + BUFF_SIZE - i - f, i + f);
+		size += i;
+		if (f)
+			return (1);
 	}
-	return (0);
-}
-
-int		main(int c, char **v)
-{
-	int fd = open(v[1], O_RDONLY);
-	char	**l;
-	get_next_line(fd, l);
-	printf("%s\n", *l);
-	close (fd);
 }
