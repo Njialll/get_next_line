@@ -6,7 +6,7 @@
 /*   By: mbeilles <mbeilles@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2017/04/24 19:15:34 by mbeilles          #+#    #+#             */
-/*   Updated: 2017/05/01 20:17:00 by mbeilles         ###   ########.fr       */
+/*   Updated: 2017/05/01 20:49:05 by mbeilles         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,32 +35,29 @@ static size_t	ft_getic(char const *buff, char c, int *f)
 	return (buff - tmp);
 }
 
+static t_fd_buffer		*create_buffer(int fd)
+{
+	t_fd_buffer	*tmp;
+
+	if ((tmp = (t_fd_buffer*)malloc(sizeof(t_fd_buffer))) == NULL ||
+		(tmp->buffer = (char*)ft_memalloc(BUFF_SIZE + 1)) == NULL)
+		return (NULL);
+	tmp->fd = fd;
+	tmp->next = NULL;
+	return (tmp);
+}
+
 static t_fd_buffer		*allocate_buffers(int fd, t_fd_buffer **buffs, char **line)
 {
 	t_fd_buffer	*tmp;
 
 	*line = NULL;
 	if (!(*buffs))
-	{
-		if ((*buffs = (t_fd_buffer*)malloc(sizeof(t_fd_buffer))) == NULL ||
-			((*buffs)->buffer = (char*)ft_memalloc(BUFF_SIZE + 1)) == NULL)
-			return (NULL);
-		(*buffs)->fd = fd;
-		(*buffs)->next = NULL;
-	}
-	while ((*buffs)->next && (*buffs)->fd != fd)
-		(*buffs) = (*buffs)->next;
-	if ((*buffs) && (*buffs)->fd != fd)
-	{
-		if ((tmp = (t_fd_buffer*)malloc(sizeof(t_fd_buffer))) == NULL ||
-			(tmp->buffer = (char*)ft_memalloc(BUFF_SIZE + 1)) == NULL)
-			return (NULL);
-		tmp->fd = fd;
-		tmp->next = NULL;
-		(*buffs)->next = tmp;
-		return (tmp);
-	}
-	return (*buffs);
+		return (*buffs = create_buffer(fd));
+	tmp = *buffs;
+	while (tmp->fd != fd && tmp->next)
+		tmp = tmp->next;
+	return ((tmp->fd != fd) ? tmp->next = create_buffer(fd) : tmp);
 }
 
 static char		*ft_realloc(char *buff, size_t size, size_t n)
